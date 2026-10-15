@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cervix-verde: #057a30;
+  --color-cervix-card: #97bba7;
+  --color-cervix-botao: #55856a;
+  --color-cervix-campo: #c8d3ce;
+}
