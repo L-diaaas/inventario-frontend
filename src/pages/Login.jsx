@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import line1laranja from '../assets/line1-laranja.png'
 import line2laranja from '../assets/line2-laranja.png'
 import line1verde from '../assets/line1-verde.png'
@@ -10,6 +11,12 @@ import { User, Eye, EyeOff } from 'lucide-react'
 export default function Login() {
 
     const [mostrarSenha, setMostrarSenha] = useState(false)
+    const navigate = useNavigate()
+
+    function handleSubmit(event) {
+        event.preventDefault()
+        navigate('/home')
+    }
 
     return(
         <main className="relative min-h-screen overflow-hidden bg-white">
@@ -41,13 +48,12 @@ export default function Login() {
                     <label htmlFor="senha" className="mb-1 ml-3 font-semibold text-white">Senha</label>
                     <div className="relative mb-4">
                         <input id="senha" type={mostrarSenha ? 'text' : 'password'} className="h-14 w-full rounded-2xl border border-cervix-verde bg-cervix-campo px-4 pr-12 focus:ring-2 focus:ring-cervix-verde focus:outline-none"/>
-                        <button type="button" onClick={() => setMostrarSenha(!mostrarSenha)} aria-label={mostrarSenha ? 'Esconder senha' : 'Mostrar senha'} className="absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer text-cervix-botao">{mostrarSenha ? <EyeOff size={22} /> : <Eye size={22} />}</button>
+                        <button type="button" onClick={() => setMostrarSenha(!mostrarSenha)} aria-label={mostrarSenha ? 'Esconder senha' : 'Mostrar senha'} className="absolute top-1/2 right-4 -translate-y-1/2 cursor-pointer text-cervix-botao">{mostrarSenha ? <Eye size={22} /> : <EyeOff size={22} />}</button>
                     </div>
 
-                    <button type="submit" className="mt-6 cursor-pointer self-center rounded-2xl bg-cervix-botao px-10 py-3 font-bold text-white shadow-md transition-colors hover:bg-green-800">Entrar</button>
+                    <button onClick={handleSubmit} type="submit" className="mt-6 cursor-pointer self-center rounded-2xl bg-cervix-botao px-10 py-3 font-bold text-white shadow-md transition-colors hover:bg-green-800">Entrar</button>
                 </form>
             </div>
         </main>
     )
-
 }
