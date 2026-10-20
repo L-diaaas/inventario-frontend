@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Plus, Pencil, Trash2, Building, LayoutGrid, Monitor, User } from "lucide-react";
+import { Plus, Pencil, Trash2, Building, LayoutGrid, Monitor, User, Link as LinkIcon } from "lucide-react";
 import Modal from "../components/Modal";
 import ConfirmModal from "../components/ConfirmModal";
 
 // --- MOCKS DE RELACIONAMENTO ---
-const mockAndares = [
+const initialAndares = [
     { id: 1, nome: "1º Andar - Operacional" },
     { id: 2, nome: "2º Andar - TI & Diretoria" },
     { id: 3, nome: "Térreo - Recepção" }
@@ -29,7 +29,7 @@ const initialMesas = [
         status: "ocupada",
         andar_id: 2,
         colaborador_id: 1, // Carlos Eduardo
-        maquina_id: 1       // PC-TI-01
+        maquina_id: 1      // PC-TI-01
     },
     {
         id: 2,
@@ -37,7 +37,7 @@ const initialMesas = [
         status: "ocupada",
         andar_id: 2,
         colaborador_id: 2, // Ana Paula
-        maquina_id: 2       // PC-DES-02
+        maquina_id: 2      // PC-DES-02
     },
     {
         id: 3,
@@ -50,87 +50,153 @@ const initialMesas = [
 ];
 
 export default function Localizacao() {
-    const [activeTab, setActiveTab] = useState("mesas"); // 'andares' ou 'mesas'
+    const [activeTab, setActiveTab] = useState("mesas"); // 'mesas' ou 'andares'
     const [mesas, setMesas] = useState(initialMesas);
-    const [andares, setAndares] = useState(mockAndares);
+    const [andares, setAndares] = useState(initialAndares);
 
     // Modais
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [isDeleteOpen, setIsDeleteOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState(null);
 
-    // Form Mesa
+    // Campos do Formulário de Mesas
     const [formMesa, setFormMesa] = useState({
         numero: "",
         status: "livre",
-        andar_id: mockAndares[0].id,
+        andar_id: initialAndares[0]?.id || "",
         colaborador_id: "",
         maquina_id: ""
     });
 
+    // Campo do Formulário de Andares
+    const [nomeAndar, setNomeAndar] = useState("");
+
+    // Helper para buscar nome na lista por ID
     const getName = (list, id, fallback = "Nenhum") => {
         if (!id) return fallback;
-        const found = list.find(item => item.id === Number(id));
-        return found ? (found.nome || found.numero) : fallback;
+        const found = list.find((item) => item.id === Number(id));
+        return found ? found.nome || found.numero : fallback;
     };
 
+    // Helper para exibir as mesas alocadas em um andar em tempo real
+    const getMesasDoAndar = (andarId) => {
+        const mesasNoAndar = mesas.filter((m) => m.andar_id === andarId);
+        if (mesasNoAndar.length === 0) {
+            return <span className="text-xs text-gray-400 italic">Nenhuma mesa cadastrada neste andar</span>;
+        }
+        return (
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700 border border-green-200">
+                <LinkIcon size={12} />
+                {mesasNoAndar.length} {mesasNoAndar.length === 1 ? "mesa" : "mesas"} ({mesasNoAndar.map((m) => m.numero).join(", ")})
+            </span>
+        );
+    };
+
+    // Abrir Modal de Cadastro
     const handleOpenCreate = () => {
         setSelectedItem(null);
-        setFormMesa({
-            numero: "",
-            status: "livre",
-            andar_id: mockAndares[0].id,
-            colaborador_id: "",
-            maquina_id: ""
-        });
+        if (activeTab === "mesas") {
+            setFormMesa({
+                numero: "",
+                status: "livre",
+                andar_id: andares[0]?.id || "",
+                colaborador_id: "",
+                maquina_id: ""
+            });
+        } else {
+            setNomeAndar("");
+        }
         setIsFormOpen(true);
     };
 
+    // Abrir Modal de Edição
     const handleOpenEdit = (item) => {
         setSelectedItem(item);
-        setFormMesa({
-            ...item,
-            colaborador_id: item.colaborador_id || "",
-            maquina_id: item.maquina_id || ""
-        });
+        if (activeTab === "mesas") {
+            setFormMesa({
+                ...item,
+                colaborador_id: item.colaborador_id || "",
+                maquina_id: item.maquina_id || ""
+            });
+        } else {
+            setNomeAndar(item.nome);
+        }
         setIsFormOpen(true);
     };
 
+    // Abrir Modal de Exclusão
+    const handleOpenDelete = (item) => {
+        setSelectedItem(item);
+        setIsDeleteOpen(true);
+    };
+
+    // Salvar Registo (Mesa ou Andar)
     const handleSave = (e) => {
         e.preventDefault();
-        const payload = {
-            ...formMesa,
-            andar_id: Number(formMesa.andar_id),
-            colaborador_id: formMesa.colaborador_id ? Number(formMesa.colaborador_id) : null,
-            maquina_id: formMesa.maquina_id ? Number(formMesa.maquina_id) : null,
-            status: formMesa.colaborador_id || formMesa.maquina_id ? "ocupada" : formMesa.status
-        };
 
-        if (selectedItem) {
-            setMesas(prev => prev.map(m => m.id === selectedItem.id ? { ...payload, id: m.id } : m));
+        if (activeTab === "mesas") {
+            if (!formMesa.numero.trim()) return;
+            const payload = {
+                ...formMesa,
+                andar_id: Number(formMesa.andar_id),
+                colaborador_id: formMesa.colaborador_id ? Number(formMesa.colaborador_id) : null,
+                maquina_id: formMesa.maquina_id ? Number(formMesa.maquina_id) : null,
+                status: formMesa.colaborador_id || formMesa.maquina_id ? "ocupada" : formMesa.status
+            };
+
+            if (selectedItem) {
+                setMesas((prev) => prev.map((m) => (m.id === selectedItem.id ? { ...payload, id: m.id } : m)));
+            } else {
+                setMesas((prev) => [...prev, { ...payload, id: Date.now() }]);
+            }
         } else {
-            setMesas(prev => [...prev, { ...payload, id: Date.now() }]);
+            if (!nomeAndar.trim()) return;
+            const payload = { nome: nomeAndar };
+
+            if (selectedItem) {
+                setAndares((prev) => prev.map((a) => (a.id === selectedItem.id ? { ...payload, id: a.id } : a)));
+            } else {
+                setAndares((prev) => [...prev, { ...payload, id: Date.now() }]);
+            }
         }
+
         setIsFormOpen(false);
+    };
+
+    // Confirmar Exclusão
+    const handleDeleteConfirm = () => {
+        if (!selectedItem) return;
+
+        if (activeTab === "mesas") {
+            setMesas((prev) => prev.filter((m) => m.id !== selectedItem.id));
+        } else {
+            setAndares((prev) => prev.filter((a) => a.id !== selectedItem.id));
+        }
+        setIsDeleteOpen(false);
     };
 
     return (
         <div className="space-y-6">
+            {/* Header + Botão de Ação Dinâmico */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
+                    <div className="block md:hidden mb-1">
+                        <span className="text-sm font-semibold text-gray-600">Olá,</span>
+                        <h2 className="text-lg font-bold text-gray-900">Laura Dias!</h2>
+                    </div>
                     <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Localização</h1>
                     <p className="text-xs text-gray-500 mt-1">Gestão de andares, posições de trabalho e seus ocupantes</p>
                 </div>
                 <button
                     onClick={handleOpenCreate}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-[#eba882] px-5 py-2.5 font-bold text-gray-900 transition-all hover:bg-[#e4976c] shadow-sm"
+                    className="flex items-center justify-center gap-2 rounded-xl bg-[#eba882] px-5 py-2.5 font-bold text-gray-900 transition-all hover:bg-[#e4976c] active:scale-95 shadow-sm"
                 >
                     <Plus size={20} />
-                    <span>Nova Mesa</span>
+                    <span>{activeTab === "mesas" ? "Nova Mesa" : "Novo Andar"}</span>
                 </button>
             </div>
 
-            {/* Abas */}
+            {/* Abas de Navegação */}
             <div className="flex gap-2 border-b border-gray-100 pb-3">
                 <button
                     onClick={() => setActiveTab("mesas")}
@@ -150,126 +216,247 @@ export default function Localizacao() {
                 </button>
             </div>
 
-            {/* Tabela de Mesas com Vínculos */}
+            {/* Tabela de Mesas */}
             {activeTab === "mesas" && (
                 <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-                    <table className="w-full text-left text-sm text-gray-600">
-                        <thead className="bg-[#fdebe1] text-xs font-bold uppercase text-gray-800">
-                            <tr>
-                                <th className="px-6 py-4">Mesa / Posição</th>
-                                <th className="px-6 py-4">Andar</th>
-                                <th className="px-6 py-4">Colaborador Alocado</th>
-                                <th className="px-6 py-4">Máquina na Mesa</th>
-                                <th className="px-6 py-4">Status</th>
-                                <th className="px-6 py-4 text-center">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {mesas.map((mesa) => (
-                                <tr key={mesa.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-bold text-gray-900">{mesa.numero}</td>
-                                    <td className="px-6 py-4 font-medium text-gray-700">{getName(andares, mesa.andar_id)}</td>
-                                    <td className="px-6 py-4">
-                                        {mesa.colaborador_id ? (
-                                            <span className="inline-flex items-center gap-1.5 font-semibold text-gray-800">
-                                                <User size={14} className="text-gray-400" />
-                                                {getName(mockColaboradores, mesa.colaborador_id)}
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-gray-400 italic">Livre (Sem colaborador)</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        {mesa.maquina_id ? (
-                                            <span className="inline-flex items-center gap-1.5 font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
-                                                <Monitor size={14} />
-                                                {getName(mockMaquinas, mesa.maquina_id)}
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-gray-400 italic">Sem máquina</span>
-                                        )}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                                            mesa.status === 'ocupada' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                                        }`}>
-                                            {mesa.status === 'ocupada' ? 'Ocupada' : 'Livre'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-center">
-                                        <div className="flex justify-center gap-2">
-                                            <button onClick={() => handleOpenEdit(mesa)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg">
-                                                <Pencil size={18} />
-                                            </button>
-                                            <button onClick={() => { setSelectedItem(mesa); setIsDeleteOpen(true); }} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg">
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
-                                    </td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-gray-600">
+                            <thead className="bg-[#fdebe1] text-xs font-bold uppercase text-gray-800">
+                                <tr>
+                                    <th className="px-6 py-4">Mesa / Posição</th>
+                                    <th className="px-6 py-4">Andar</th>
+                                    <th className="px-6 py-4">Colaborador Alocado</th>
+                                    <th className="px-6 py-4">Máquina na Mesa</th>
+                                    <th className="px-6 py-4">Status</th>
+                                    <th className="px-6 py-4 text-center w-32">Ações</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {mesas.map((mesa) => (
+                                    <tr key={mesa.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 font-bold text-gray-900">{mesa.numero}</td>
+                                        <td className="px-6 py-4 font-medium text-gray-700">{getName(andares, mesa.andar_id)}</td>
+                                        <td className="px-6 py-4">
+                                            {mesa.colaborador_id ? (
+                                                <span className="inline-flex items-center gap-1.5 font-semibold text-gray-800">
+                                                    <User size={14} className="text-gray-400" />
+                                                    {getName(mockColaboradores, mesa.colaborador_id)}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-400 italic">Livre (Sem colaborador)</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {mesa.maquina_id ? (
+                                                <span className="inline-flex items-center gap-1.5 font-bold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200">
+                                                    <Monitor size={14} />
+                                                    {getName(mockMaquinas, mesa.maquina_id)}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs text-gray-400 italic">Sem máquina</span>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span
+                                                className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                                    mesa.status === "ocupada" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                                                }`}
+                                            >
+                                                {mesa.status === "ocupada" ? "Ocupada" : "Livre"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex justify-center gap-2">
+                                                <button
+                                                    onClick={() => handleOpenEdit(mesa)}
+                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="Editar"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleOpenDelete(mesa)}
+                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
-            {/* Modal de Formulário com Opção de Alocação */}
-            <Modal isOpen={isFormOpen} onClose={() => setIsFormOpen(false)} title="Cadastro de Mesa">
+            {/* Tabela de Andares */}
+            {activeTab === "andares" && (
+                <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm text-gray-600">
+                            <thead className="bg-[#fdebe1] text-xs font-bold uppercase text-gray-800">
+                                <tr>
+                                    <th className="px-6 py-4 w-24">ID</th>
+                                    <th className="px-6 py-4">Nome do Andar / Setor</th>
+                                    <th className="px-6 py-4">Mesas Cadastradas no Andar</th>
+                                    <th className="px-6 py-4 text-center w-32">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {andares.map((andar) => (
+                                    <tr key={andar.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4 font-medium text-gray-900">#{andar.id}</td>
+                                        <td className="px-6 py-4 font-bold text-gray-900">{andar.nome}</td>
+                                        <td className="px-6 py-4">{getMesasDoAndar(andar.id)}</td>
+                                        <td className="px-6 py-4 text-center">
+                                            <div className="flex justify-center gap-2">
+                                                <button
+                                                    onClick={() => handleOpenEdit(andar)}
+                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="Editar"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleOpenDelete(andar)}
+                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Excluir"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Formulário (Criar / Editar) */}
+            <Modal
+                isOpen={isFormOpen}
+                onClose={() => setIsFormOpen(false)}
+                title={
+                    selectedItem
+                        ? `Editar ${activeTab === "mesas" ? "Mesa" : "Andar"}`
+                        : `Novo ${activeTab === "mesas" ? "Mesa" : "Andar"}`
+                }
+            >
                 <form onSubmit={handleSave} className="space-y-4">
-                    <div>
-                        <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">Identificação da Mesa</label>
-                        <input
-                            type="text"
-                            value={formMesa.numero}
-                            onChange={(e) => setFormMesa({ ...formMesa, numero: e.target.value })}
-                            placeholder="Ex: Mesa 14, Estação TI-02"
-                            className="w-full rounded-xl border p-2.5 text-sm"
-                        />
-                    </div>
+                    {activeTab === "mesas" ? (
+                        <>
+                            <div>
+                                <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+                                    Identificação da Mesa
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formMesa.numero}
+                                    onChange={(e) => setFormMesa({ ...formMesa, numero: e.target.value })}
+                                    placeholder="Ex: Mesa 14, Estação TI-02..."
+                                    autoFocus
+                                    className="w-full rounded-xl border border-gray-200 p-2.5 text-sm outline-none focus:border-gray-400"
+                                />
+                            </div>
 
-                    <div>
-                        <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">Andar</label>
-                        <select
-                            value={formMesa.andar_id}
-                            onChange={(e) => setFormMesa({ ...formMesa, andar_id: e.target.value })}
-                            className="w-full rounded-xl border p-2.5 text-sm bg-white"
-                        >
-                            {andares.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
-                        </select>
-                    </div>
+                            <div>
+                                <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">Andar</label>
+                                <select
+                                    value={formMesa.andar_id}
+                                    onChange={(e) => setFormMesa({ ...formMesa, andar_id: e.target.value })}
+                                    className="w-full rounded-xl border border-gray-200 p-2.5 text-sm bg-white outline-none focus:border-gray-400"
+                                >
+                                    {andares.map((a) => (
+                                        <option key={a.id} value={a.id}>
+                                            {a.nome}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+                                        Colaborador Ocupante
+                                    </label>
+                                    <select
+                                        value={formMesa.colaborador_id}
+                                        onChange={(e) => setFormMesa({ ...formMesa, colaborador_id: e.target.value })}
+                                        className="w-full rounded-xl border border-gray-200 p-2.5 text-sm bg-white outline-none focus:border-gray-400"
+                                    >
+                                        <option value="">Nenhum / Mesa Vazia</option>
+                                        {mockColaboradores.map((c) => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.nome}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+                                        Máquina Alocada
+                                    </label>
+                                    <select
+                                        value={formMesa.maquina_id}
+                                        onChange={(e) => setFormMesa({ ...formMesa, maquina_id: e.target.value })}
+                                        className="w-full rounded-xl border border-gray-200 p-2.5 text-sm bg-white outline-none focus:border-gray-400"
+                                    >
+                                        <option value="">Nenhuma / Sem Máquina</option>
+                                        {mockMaquinas.map((m) => (
+                                            <option key={m.id} value={m.id}>
+                                                {m.nome}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
                         <div>
-                            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">Colaborador Ocupante</label>
-                            <select
-                                value={formMesa.colaborador_id}
-                                onChange={(e) => setFormMesa({ ...formMesa, colaborador_id: e.target.value })}
-                                className="w-full rounded-xl border p-2.5 text-sm bg-white"
-                            >
-                                <option value="">Nenhum / Mesa Vazia</option>
-                                {mockColaboradores.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                            </select>
+                            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
+                                Nome do Andar / Setor
+                            </label>
+                            <input
+                                type="text"
+                                value={nomeAndar}
+                                onChange={(e) => setNomeAndar(e.target.value)}
+                                placeholder="Ex: 3º Andar - Marketing, Térreo - Recepção..."
+                                autoFocus
+                                className="w-full rounded-xl border border-gray-200 p-2.5 text-sm outline-none focus:border-gray-400"
+                            />
                         </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">Máquina Alocada</label>
-                            <select
-                                value={formMesa.maquina_id}
-                                onChange={(e) => setFormMesa({ ...formMesa, maquina_id: e.target.value })}
-                                className="w-full rounded-xl border p-2.5 text-sm bg-white"
-                            >
-                                <option value="">Nenhuma / Sem Máquina</option>
-                                {mockMaquinas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                            </select>
-                        </div>
-                    </div>
+                    )}
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                        <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 text-sm font-semibold text-gray-600">Cancelar</button>
-                        <button type="submit" className="rounded-xl bg-[#eba882] px-5 py-2 text-sm font-bold text-gray-900">Salvar Mesa</button>
+                        <button
+                            type="button"
+                            onClick={() => setIsFormOpen(false)}
+                            className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            className="rounded-xl bg-[#eba882] px-5 py-2 text-sm font-bold text-gray-900 hover:bg-[#e4976c]"
+                        >
+                            Salvar
+                        </button>
                     </div>
                 </form>
             </Modal>
+
+            {/* Modal de Confirmação de Exclusão */}
+            <ConfirmModal
+                isOpen={isDeleteOpen}
+                onClose={() => setIsDeleteOpen(false)}
+                onConfirm={handleDeleteConfirm}
+                message={`Tem certeza que deseja excluir este ${activeTab === "mesas" ? "mesa" : "andar"}?`}
+            />
         </div>
     );
 }
